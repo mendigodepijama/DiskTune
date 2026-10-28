@@ -1,0 +1,184 @@
+<Window x:Class="DiskTune.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:DiskTune.Controls"
+        Title="DiskTune - Verificador de Superfície e Saúde de Disco"
+        Height="780" Width="1080"
+        MinHeight="600" MinWidth="850"
+        Background="#0E1217"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <!-- Estilo dos Botões -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#2563EB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1D4ED8"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#334155"/>
+                    <Setter Property="Foreground" Value="#94A3B8"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Estilo dos Cards -->
+        <Style x:Key="MetricCard" TargetType="Border">
+            <Setter Property="Background" Value="#181F2C"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="BorderBrush" Value="#242E42"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Top Bar (Select Drive) -->
+            <RowDefinition Height="Auto"/> <!-- Metrics & Stats -->
+            <RowDefinition Height="*"/>    <!-- Canvas / Block Grid -->
+            <RowDefinition Height="Auto"/> <!-- Legend & Progress Bar -->
+        </Grid.RowDefinitions>
+
+        <!-- TOP BAR: Seletor de Drive e Controles -->
+        <Border Grid.Row="0" Background="#181F2C" CornerRadius="8" Padding="16,12" Margin="0,0,0,16" BorderBrush="#242E42" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Dispositivo:" Foreground="#94A3B8" FontSize="14" VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                <ComboBox Grid.Column="1" Name="CmbDisks" Height="38" VerticalContentAlignment="Center"
+                          Background="#0E1217" Foreground="#F8FAFC" FontSize="13" Margin="0,0,16,0"
+                          DisplayMemberPath="DisplayName"/>
+
+                <CheckBox Grid.Column="2" Name="ChkQuickScan" Content="Varredura Rápida (Amostragem)"
+                          Foreground="#CBD5E1" FontSize="13" VerticalAlignment="Center" Margin="0,0,20,0"/>
+
+                <Button Grid.Column="3" Name="BtnStart" Content="Iniciar Verificação" Click="BtnStart_Click" Margin="0,0,10,0"/>
+                <Button Grid.Column="4" Name="BtnStop" Content="Parar" Background="#DC2626" Click="BtnStop_Click" IsEnabled="False"/>
+            </Grid>
+        </Border>
+
+        <!-- CARDS DE MÉTRICAS -->
+        <Grid Grid.Row="1" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Velocidade -->
+            <Border Grid.Column="0" Style="{StaticResource MetricCard}">
+                <StackPanel>
+                    <TextBlock Text="VELOCIDADE ATUAL" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+                    <TextBlock Name="TxtSpeed" Text="0.0 MB/s" Foreground="#38BDF8" FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Posição / LBA -->
+            <Border Grid.Column="1" Style="{StaticResource MetricCard}">
+                <StackPanel>
+                    <TextBlock Text="POSIÇÃO ESCANEADA" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+                    <TextBlock Name="TxtPosition" Text="0 GB / 0 GB" Foreground="#F8FAFC" FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Tempo Decorrido -->
+            <Border Grid.Column="2" Style="{StaticResource MetricCard}">
+                <StackPanel>
+                    <TextBlock Text="TEMPO / RESTANTE" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+                    <TextBlock Name="TxtTime" Text="00:00 / --:--" Foreground="#F8FAFC" FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Blocos Bons -->
+            <Border Grid.Column="3" Style="{StaticResource MetricCard}">
+                <StackPanel>
+                    <TextBlock Text="BLOCOS SAUDÁVEIS" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+                    <TextBlock Name="TxtGoodCount" Text="0 (100%)" Foreground="#22C55E" FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Blocos Danificados (Bad Blocks) -->
+            <Border Grid.Column="4" Style="{StaticResource MetricCard}" Margin="0">
+                <StackPanel>
+                    <TextBlock Text="DANIFICADOS / ERROS" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+                    <TextBlock Name="TxtDamagedCount" Text="0" Foreground="#EF4444" FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ÁREA CENTRAL: O MAPA DE BLOCOS -->
+        <Border Grid.Row="2" Background="#141820" CornerRadius="8" Padding="12" BorderBrush="#242E42" BorderThickness="1">
+            <controls:BlockCanvas x:Name="CanvasGrid"/>
+        </Border>
+
+        <!-- RODAPÉ: Legenda e Barra de Progresso Geral -->
+        <Grid Grid.Row="3" Margin="0,16,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Barra de Progresso -->
+            <ProgressBar Grid.Row="0" Name="PrgTotal" Height="8" Background="#181F2C" Foreground="#2563EB"
+                         BorderThickness="0" Margin="0,0,0,12" Value="0" Maximum="100"/>
+
+            <!-- Legenda de Cores -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Verde -->
+                    <Border Width="12" Height="12" Background="#2ECC71" CornerRadius="2" Margin="0,0,6,0"/>
+                    <TextBlock Text="Bom (&lt; 150ms)" Foreground="#94A3B8" FontSize="12" Margin="0,0,18,0"/>
+
+                    <!-- Amarelo -->
+                    <Border Width="12" Height="12" Background="#F1C40F" CornerRadius="2" Margin="0,0,6,0"/>
+                    <TextBlock Text="Lento (&lt; 500ms)" Foreground="#94A3B8" FontSize="12" Margin="0,0,18,0"/>
+
+                    <!-- Laranja -->
+                    <Border Width="12" Height="12" Background="#E67E22" CornerRadius="2" Margin="0,0,6,0"/>
+                    <TextBlock Text="Crítico (&lt; 2s)" Foreground="#94A3B8" FontSize="12" Margin="0,0,18,0"/>
+
+                    <!-- Vermelho -->
+                    <Border Width="12" Height="12" Background="#E74C3C" CornerRadius="2" Margin="0,0,6,0"/>
+                    <TextBlock Text="Danificado / Bad Block" Foreground="#EF4444" FontWeight="SemiBold" FontSize="12"/>
+                </StackPanel>
+
+                <!-- Status de texto -->
+                <TextBlock Grid.Column="2" Name="TxtStatus" Text="Pronto para iniciar." Foreground="#94A3B8" FontSize="13" VerticalAlignment="Center"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

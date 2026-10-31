@@ -26,6 +26,8 @@ public class DiskDriveInfo
     public string DisplayName =>
         $"Disco {Index}: {Model} ({FormatBytes(TotalSizeBytes)}) [{AssociatedPartitions}]";
 
+    public override string ToString() => DisplayName;
+
     public static string FormatBytes(long bytes)
     {
         if (bytes <= 0) return "0 GB";

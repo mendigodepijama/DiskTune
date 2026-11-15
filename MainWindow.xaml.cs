@@ -1,5 +1,8 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using DiskTune.Models;
 using DiskTune.Services;
@@ -60,17 +63,163 @@ public partial class MainWindow : Window
         _scanner.ScanCompleted -= Scanner_ScanCompleted;
     }
 
-    private void RefreshDiskList()
+    private void RefreshDiskList(string? preferredDeviceId = null)
     {
-        _disks = DiskEnumerator.GetPhysicalDrives();
-        CmbDisks.ItemsSource = _disks;
-
-        if (_disks.Count > 0)
+        try
         {
-            // Tenta selecionar um disco secundário se houver, ou o primeiro
-            var target = _disks.FirstOrDefault(d => d.AssociatedPartitions.Contains("G:")) ?? _disks[0];
-            CmbDisks.SelectedItem = target;
+            _disks = DiskEnumerator.GetPhysicalDrives();
+            CmbDisks.ItemsSource = _disks;
+
+            if (_disks.Count > 0)
+            {
+                // Tenta manter o disco que já estava selecionado
+                DiskDriveInfo? target = null;
+                if (!string.IsNullOrEmpty(preferredDeviceId))
+                {
+                    target = _disks.FirstOrDefault(d => d.DeviceId == preferredDeviceId);
+                }
+
+                // Fallback: se não encontrar, tenta selecionar um disco secundário com G: ou o primeiro
+                if (target == null)
+                {
+                    target = _disks.FirstOrDefault(d => d.AssociatedPartitions.Contains("G:")) ?? _disks[0];
+                }
+
+                CmbDisks.SelectedItem = target;
+                UpdateDiskTabs(target);
+            }
+            else
+            {
+                TxtStatus.Text = "Nenhum disco físico encontrado no sistema.";
+            }
         }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Erro ao listar discos: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void BtnRefresh_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isScanning)
+        {
+            MessageBox.Show("Aguarde ou pare a verificação de superfície atual antes de recarregar os discos.",
+                "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        string? currentId = (CmbDisks.SelectedItem as DiskDriveInfo)?.DeviceId;
+        RefreshDiskList(currentId);
+        TxtStatus.Text = "Lista de discos atualizada com sucesso.";
+    }
+
+    private void CmbDisks_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CmbDisks.SelectedItem is DiskDriveInfo selectedDisk)
+        {
+            UpdateDiskTabs(selectedDisk);
+        }
+    }
+
+    private void UpdateDiskTabs(DiskDriveInfo disk)
+    {
+        UpdateHealthTab(disk);
+        UpdateInfoTab(disk);
+    }
+
+    private void UpdateHealthTab(DiskDriveInfo disk)
+    {
+        var health = disk.HealthSummary;
+
+        if (health == null || !health.IsSupported)
+        {
+            TxtHealthBadge.Text = "NÃO SUPORTADO";
+            BdrHealthBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#64748B"));
+            TxtHealthMessage.Text = health?.HealthMessage ?? "Dados S.M.A.R.T. não disponíveis para este dispositivo.";
+
+            TxtHealthTemp.Text = "--";
+            TxtHealthPowerHours.Text = "--";
+            TxtHealthPowerCycles.Text = "--";
+            TxtHealthReallocated.Text = "--";
+            TxtHealthCrc.Text = "--";
+
+            GridSmartAttributes.ItemsSource = null;
+            return;
+        }
+
+        // 1. Banner Geral de Saúde
+        TxtHealthBadge.Text = health.OverallHealthBadge;
+        BdrHealthBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(health.OverallHealthColor));
+        TxtHealthMessage.Text = health.HealthMessage;
+
+        // 2. Cards de Métricas Rápidas
+        TxtHealthTemp.Text = health.Temperature.HasValue ? $"{health.Temperature.Value} °C" : "-- °C";
+        TxtHealthPowerHours.Text = health.PowerOnTimeFormatted;
+        TxtHealthPowerCycles.Text = health.PowerCycleCount.HasValue
+            ? string.Format(CultureInfo.CurrentCulture, "{0:N0} vezes", health.PowerCycleCount.Value)
+            : "--";
+
+        // Setores Realocados
+        if (health.ReallocatedSectors.HasValue)
+        {
+            ulong val = health.ReallocatedSectors.Value;
+            TxtHealthReallocated.Text = string.Format(CultureInfo.CurrentCulture, "{0:N0} setores", val);
+            TxtHealthReallocated.Foreground = val > 0
+                ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"))
+                : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#22C55E"));
+        }
+        else
+        {
+            TxtHealthReallocated.Text = "0 setores";
+            TxtHealthReallocated.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#22C55E"));
+        }
+
+        // Erros de CRC de cabo
+        if (health.CrcErrors.HasValue)
+        {
+            ulong crcVal = health.CrcErrors.Value;
+            TxtHealthCrc.Text = string.Format(CultureInfo.CurrentCulture, "{0:N0} erros", crcVal);
+            TxtHealthCrc.Foreground = crcVal > 0
+                ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B"))
+                : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#22C55E"));
+        }
+        else
+        {
+            TxtHealthCrc.Text = "0 erros";
+            TxtHealthCrc.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#22C55E"));
+        }
+
+        // 3. Tabela Completa de Atributos
+        GridSmartAttributes.ItemsSource = health.Attributes;
+    }
+
+    private void UpdateInfoTab(DiskDriveInfo disk)
+    {
+        // Seção 1: Identificação
+        TxtInfoModel.Text = string.IsNullOrWhiteSpace(disk.Model) ? "Desconhecido" : disk.Model;
+        TxtInfoSerial.Text = string.IsNullOrWhiteSpace(disk.SerialNumber) ? "N/D" : disk.SerialNumber;
+        TxtInfoFirmware.Text = string.IsNullOrWhiteSpace(disk.FirmwareRevision) ? "N/D" : disk.FirmwareRevision;
+        TxtInfoDeviceId.Text = disk.DeviceId;
+        TxtInfoStatus.Text = disk.Status;
+        TxtInfoPnp.Text = string.IsNullOrWhiteSpace(disk.PnpDeviceId) ? "N/D" : disk.PnpDeviceId;
+
+        // Seção 2: Interface e Armazenamento
+        TxtInfoBusType.Text = disk.BusType;
+        TxtInfoMediaType.Text = disk.MediaType;
+        TxtInfoCapacity.Text = DiskDriveInfo.FormatBytes(disk.TotalSizeBytes);
+        TxtInfoTotalBytes.Text = string.Format(CultureInfo.CurrentCulture, "{0:N0} Bytes", disk.TotalSizeBytes);
+        TxtInfoSectors.Text = string.Format(CultureInfo.CurrentCulture, "{0:N0} setores", disk.TotalSectors);
+        TxtInfoSectorSize.Text = $"{disk.BytesPerSector} Bytes / setor";
+
+        // Seção 3: Geometria
+        TxtInfoCylinders.Text = disk.TotalCylinders > 0 ? string.Format(CultureInfo.CurrentCulture, "{0:N0}", disk.TotalCylinders) : "N/D";
+        TxtInfoHeads.Text = disk.TotalHeads > 0 ? string.Format(CultureInfo.CurrentCulture, "{0:N0}", disk.TotalHeads) : "N/D";
+        TxtInfoTracksPerCyl.Text = disk.TracksPerCylinder > 0 ? string.Format(CultureInfo.CurrentCulture, "{0:N0}", disk.TracksPerCylinder) : "N/D";
+        TxtInfoSectorsPerTrack.Text = disk.SectorsPerTrack > 0 ? string.Format(CultureInfo.CurrentCulture, "{0:N0}", disk.SectorsPerTrack) : "N/D";
+
+        // Seção 4: Partições e Volumes
+        LstPartitions.ItemsSource = disk.PartitionsDetails;
+        TxtNoPartitions.Visibility = disk.PartitionsDetails.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async void BtnStart_Click(object sender, RoutedEventArgs e)
@@ -81,9 +230,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Garante que a aba de verificação fique em primeiro plano ao iniciar
+        MainTabControl.SelectedIndex = 0;
+
         _isScanning = true;
         BtnStart.IsEnabled = false;
         BtnStop.IsEnabled = true;
+        BtnRefresh.IsEnabled = false;
         CmbDisks.IsEnabled = false;
         ChkQuickScan.IsEnabled = false;
 
@@ -171,6 +324,7 @@ public partial class MainWindow : Window
             _isScanning = false;
             BtnStart.IsEnabled = true;
             BtnStop.IsEnabled = false;
+            BtnRefresh.IsEnabled = true;
             CmbDisks.IsEnabled = true;
             ChkQuickScan.IsEnabled = true;
             TxtStatus.Text = message;

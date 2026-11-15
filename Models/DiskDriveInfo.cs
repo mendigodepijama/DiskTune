@@ -18,10 +18,33 @@ public class DiskDriveInfo
     public string DeviceId { get; set; } = string.Empty; // e.g. \\.\PhysicalDrive1
     public string Model { get; set; } = string.Empty;
     public string SerialNumber { get; set; } = string.Empty;
+    public string FirmwareRevision { get; set; } = string.Empty;
     public string InterfaceType { get; set; } = string.Empty;
+    public string BusType { get; set; } = string.Empty;
     public long TotalSizeBytes { get; set; }
     public string MediaType { get; set; } = string.Empty;
     public string AssociatedPartitions { get; set; } = string.Empty;
+    public string PnpDeviceId { get; set; } = string.Empty;
+    public string Status { get; set; } = "OK";
+
+    // Geometria e Setores
+    public uint BytesPerSector { get; set; } = 512;
+    public uint SectorsPerTrack { get; set; }
+    public uint TracksPerCylinder { get; set; }
+    public ulong TotalCylinders { get; set; }
+    public uint TotalHeads { get; set; }
+    public ulong TotalSectors { get; set; }
+    public ulong TotalTracks { get; set; }
+    public uint PartitionsCount { get; set; }
+
+    // Rotação (para HDDs mecânicos, ex: 7200 RPM, ou SSD)
+    public uint SpindleSpeedRpm { get; set; }
+
+    // Partições detalhadas
+    public List<DiskPartitionDetail> PartitionsDetails { get; set; } = new();
+
+    // Dados de Saúde / SMART
+    public DiskHealthSummary? HealthSummary { get; set; }
 
     public string DisplayName =>
         $"Disco {Index}: {Model} ({FormatBytes(TotalSizeBytes)}) [{AssociatedPartitions}]";

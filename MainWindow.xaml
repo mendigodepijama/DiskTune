@@ -6,6 +6,7 @@
         Height="820" Width="1120"
         MinHeight="650" MinWidth="900"
         Background="#0E1217"
+        Icon="app.ico"
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>

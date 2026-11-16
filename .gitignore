@@ -1,6 +1,9 @@
 # .NET Build and Cache
 **/bin/
 **/obj/
+Release/
+*.exe
+*.pdb
 .vs/
 *.user
 *.suo

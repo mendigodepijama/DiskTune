@@ -727,7 +727,7 @@
 
                                                     <!-- Barra de uso do volume -->
                                                     <ProgressBar Grid.Row="1" Height="8" Background="#1E293B" Foreground="#2563EB"
-                                                                 BorderThickness="0" Margin="0,8,0,0" Value="{Binding PercentUsed}" Maximum="100"/>
+                                                                 BorderThickness="0" Margin="0,8,0,0" Value="{Binding PercentUsed, Mode=OneWay}" Maximum="100"/>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>

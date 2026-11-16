@@ -7,11 +7,20 @@ public class DiskPartitionDetail
     public string FileSystem { get; set; } = string.Empty;  // ex: "NTFS"
     public long TotalBytes { get; set; }
     public long FreeBytes { get; set; }
-    public long UsedBytes => Math.Max(0, TotalBytes - FreeBytes);
+    
+    public long UsedBytes
+    {
+        get => Math.Max(0, TotalBytes - FreeBytes);
+        set { }
+    }
 
-    public double PercentUsed => TotalBytes > 0
-        ? Math.Min(100.0, Math.Max(0.0, ((double)UsedBytes / TotalBytes) * 100.0))
-        : 0;
+    public double PercentUsed
+    {
+        get => TotalBytes > 0
+            ? Math.Min(100.0, Math.Max(0.0, ((double)UsedBytes / TotalBytes) * 100.0))
+            : 0;
+        set { }
+    }
 
     public string DisplayLabel => string.IsNullOrWhiteSpace(VolumeName)
         ? DriveLetter
